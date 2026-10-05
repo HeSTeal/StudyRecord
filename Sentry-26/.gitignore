@@ -1,0 +1,14 @@
+# ---- Keil MDK-ARM build output ----
+MDK-ARM/RM_F405_DEMO/
+MDK-ARM/RTE/
+MDK-ARM/DebugConfig/
+MDK-ARM/_dshcheck/
+MDK-ARM/*.uvguix.*
+MDK-ARM/*.lst
+
+# ---- CubeMX generated (regenerable from .ioc) ----
+.mxproject
+
+# ---- Backup / temp files ----
+*.bak*
+_dsh_modified_backup/
