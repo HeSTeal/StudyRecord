@@ -1,0 +1,41 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "CMAKE_JLINK_TEST",
+            "type": "jlinkgdbtarget",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "preBuild": "${command:st-stm32-ide-debug-launch.build}",
+            // "runEntry": "main",
+            "imagesAndSymbols": [
+                {
+                    "imageFileName": "${workspaceFolder}/build/Debug/Sentry-26_CMAKE.elf"
+                }
+            ],
+            "verbose": false
+        },
+        {
+            "cwd": "${workspaceRoot}",
+            "name": "Debug DAPLink OpenOCD",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "serverpath": "D:/clion-toolchain/OpenOCD-20231002-0.12.0/bin/openocd.exe",
+            "configFiles": [
+                "interface/cmsis-dap.cfg",
+                "target/stm32f4x.cfg"
+            ],
+            "searchDir": [
+                "D:/clion-toolchain/OpenOCD-20231002-0.12.0/share/openocd/scripts"
+            ],
+            "executable": "${command:cmake.getLaunchTargetPath}",
+            // "runToEntryPoint": "main",
+            "showDevDebugOutput": "raw",
+            "gdbPath": "D:/clion-toolchain/gcc-arm-none-eabi-10.3-2021.10/bin/arm-none-eabi-gdb.exe"
+        }
+    ]
+}

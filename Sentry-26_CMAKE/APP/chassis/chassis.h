@@ -1,0 +1,23 @@
+#include "robot_def.h"
+#ifdef CHASSIS_BOARD
+
+#ifndef CHASSIS_H
+#define CHASSIS_H
+
+/**
+ * @file chassis.h
+ * @brief 底盘应用(麦克纳姆轮运动学解算 + 四路 3508 速度闭环)
+ */
+
+/**
+ * @brief 底盘应用初始化,请在开启rtos之前调用(目前会被RobotInit()调用)
+ */
+void ChassisInit(void);
+
+/**
+ * @brief 底盘应用任务,放入实时系统以一定频率运行
+ */
+void ChassisTask(void);
+
+#endif // !CHASSIS_H
+#endif
