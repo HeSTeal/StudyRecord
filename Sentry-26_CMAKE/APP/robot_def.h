@@ -30,9 +30,9 @@
 #define GIMBAL_NAVI_YAW_REF   (-0.77f) 					//导航模式下 yaw 电机的编码器目标角
 #define GIMBAL_FOLLOW_TARGET_OFFSET  (-0.77f)   //跟随模式下 yaw 电机的编码器目标角
 
-#define BP_ALIGN_ENTER_TH     (0.10f)
-#define BP_ALIGN_EXIT_TH      (0.20f)	/* 大 pitch 收放判定:进入阈值 < 退出阈值 => 迟滞;连续 BP_DEBOUNCE_CNT 拍意见一致才翻转 */
-#define BP_DEBOUNCE_CNT       (20)   	/* 20 * 5ms = 100ms */
+#define BP_ALIGN_ENTER_TH     (1.2f)
+#define BP_ALIGN_EXIT_TH      (1.60f)	/* 大 pitch 收放判定:进入阈值 < 退出阈值 => 迟滞;连续 BP_DEBOUNCE_CNT 拍意见一致才翻转 */
+#define BP_DEBOUNCE_CNT       (50)   	/* BP_DEBOUNCE_CNT * 5ms */
 #define YAW_ALIGN_ANGLE       0.0f    // 对齐时 yaw 电机的弧度值
 #define PITCH_HORIZON_ANGLE   0.0f    // pitch 水平时电机的弧度值
 
@@ -43,7 +43,7 @@
 #define GIMBAL_BIGPITCH_DOWN           (-1.46f)
 #define GIMBAL_BIGPITCH_UP         (0.0f)
 // 发射参数
-#define ONE_BULLET_DELTA_ANGLE 1650   	// 发射一发弹丸拨盘编码器转动增量
+#define ONE_BULLET_DELTA_ANGLE 1600   	// 发射一发弹丸拨盘编码器转动增量
 #define REDUCTION_RATIO_LOADER 36.0f		// 2006拨盘电机的减速比,英雄需要修改为3508的19.0f
 #define NUM_PER_CIRCLE         8    		// 拨盘一圈的装载量
 #define FIRE_BURST_RATE        10.0f
@@ -72,8 +72,9 @@
 // 遥控器缩放最大数
 #define RC_ROCKER_MAX                660.0f
 // 小陀螺模式参数
-#define CHASSIS_ROTATE_WZ_STEP  0.4f    // 每次拨动的步长
-#define CHASSIS_ROTATE_WZ_MAX   4.8f   // 角速度上限
+#define CHASSIS_ROTATE_WZ_STEP  0.8f    // 每次拨动的步长
+#define CHASSIS_ROTATE_WZ_MAX   4.0f   // 角速度上限
+#define CHASSIS_CHANGE_ROTATE_WZ_MAX    8.0f //变速小陀螺
 // 检查是否出现主控板定义冲突,只允许一个开发板定义存在,否则编译会自动报错
 #if (defined(CHASSIS_BOARD) && defined(GIMBAL_BOARD))
 #error Conflict board definition! You can only define one board type.

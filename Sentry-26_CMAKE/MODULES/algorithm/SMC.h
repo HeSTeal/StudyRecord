@@ -6,6 +6,29 @@
 #define dt_SMC 0.001f
 #define velocity_integral_max 2000.0f
 #define position_integral_max 2000.0f
+
+/* 必须与 ShootTask 实际调用周期一致! 5ms 就改成 0.005f */
+#define LOADER_DT           0.001f
+
+/* 位置环参数 EXPONENT (输出=速度指令 aps) */
+#define POS_SMC_C           200.0f      
+#define POS_SMC_K           100.0f     
+#define POS_SMC_THRESHOLD   5.0f
+#define POS_SMC_UMAX        16000.0f  
+#define POS_SMC_J           1.0f
+#define POS_SMC_EPSILON     10.0f     
+#define POS_SMC_DONE_TH     50.0f     
+
+/* 速度环参数 VELSMC (输出=电流, 量纲同原 MaxOut=16000) */
+#define VEL_SMC_C           0.01f      
+#define VEL_SMC_K           0.8f      
+#define VEL_SMC_THRESHOLD   2.0f
+#define VEL_SMC_UMAX        16000.0f  
+#define VEL_SMC_J           0.8f
+#define VEL_SMC_EPSILON     500.0f    
+
+
+
 typedef enum
 {
     EXPONENT, // 指数趋近律

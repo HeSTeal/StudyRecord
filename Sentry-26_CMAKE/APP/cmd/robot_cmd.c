@@ -202,19 +202,40 @@ static void HandleGimbalYaw(Gimbal_Control_Mode_e mode)
             GIMBAL_YAW_SCALE * rc_data[TEMP].rc.rocker_l_ * GYRO2GIMBAL_DIR_YAW;
     }
 }
-
-/* 小 pitch 正弦摆动 */
-static void HandleGimbalSPitchSine(void)
+/**
+ * @brief 小 pitch 正弦摆动
+ * @param active 1 = 本拍在正弦模式; 0 = 不在
+ * @note  每次从非正弦切到正弦时,相位重置到 Spitch = 0 的位置
+ */
+static void HandleGimbalSPitchSine(uint8_t active)
 {
-    static float phase = 0.0f;
-    const float freq      = 1.0f;        // 正弦频率 Hz，按需修改
-    const float center    = 7.5f;        // 中心值
-    const float amplitude = 17.5f;       // 振幅
-    const float dt        = 0.001f;      // RobotCMDTask 200Hz，周期 5ms
+    static float   phase = 0.0f;
+    static uint8_t last  = 0;
 
-    phase += 2.0f * 3.14159265f * freq * dt;
-    if (phase > 6.28318531f)
-        phase -= 6.28318531f;
+    if (!active)
+    {
+        last = 0;          // 记住"不在正弦",下次进来要重置
+        return;            // 不覆盖其他分支设置的 Spitch
+    }
+
+    const float freq      = 1.0f;
+    const float center    = 7.5f;
+    const float amplitude = 17.5f;
+    const float dt        = 0.001f;   
+
+    if (!last)
+    {
+        /* 刚进入:让 sin(phase) = -center/amplitude,
+           第一拍 Spitch = center + amplitude*sin(phase) = 0 */
+        phase = asinf(-center / amplitude);
+        last  = 1;
+    }
+    else
+    {
+        phase += 2.0f * 3.14159265f * freq * dt;
+        if (phase > 6.28318531f)
+            phase -= 6.28318531f;
+    }
 
     gimbal_cmd_send.Spitch = center + amplitude * sinf(phase);
 
@@ -319,35 +340,59 @@ static void HandleChassis(chassis_mode_e mode)
     chassis_cmd_send.wz = 0.0f;
 }
 
-/* 底盘小陀螺命令函数 */
 static void HandleRotateMode(DialEvent_e ev)
 {
     static uint8_t long_press_active = 0;
     static uint8_t sine_mode         = 0;      // 1 = 正弦往复小陀螺
+    static uint8_t pulse_mode        = 0;      // 1 = 变速脉冲小陀螺(移植自 chassis)
     static float   rotate_phase      = 0.0f;
+
+    /* ------- 变速小陀螺(脉冲式,移植自 Game_Gyro_Pulse_Update) ------- */
+    static uint8_t pulse_index   = 0;
+    static float   pulse_hold_ms = 0.0f;
+    static float   pulse_vw      = 0.0f;
+
+    static const float pulse_w_table[] = {
+        5.2f, 7.2f, 5.0f, 7.5f, 5.3f, 7.0f, 5.1f, 7.6f, 5.4f, 7.3f
+    };
+    static const float pulse_hold_ms_table[] = {
+        260.0f, 160.0f, 340.0f, 160.0f, 300.0f, 150.0f, 360.0f, 160.0f, 280.0f, 150.0f
+    };
+    const uint8_t pulse_len = (uint8_t)(sizeof(pulse_w_table) / sizeof(pulse_w_table[0]));
+
+    const float dir        = 1.0f;    // 对应 chassis 的 GAME_GYRO_DIR,反向改 -1.0f
+    const float w_min      = 5.0f;    // GAME_GYRO_MIN_W
+    const float w_max      = 7.6f;    // GAME_GYRO_MAX_W
+    const float accel_up   = 18.0f;   // GAME_GYRO_ACCEL_UP  : 速度绝对值增大时使用(慢)
+    const float accel_down = 32.0f;   // GAME_GYRO_ACCEL_DOWN: 速度绝对值减小时使用(快)
 
     switch (ev)
     {
     case DIAL_EVENT_SHORT_UP:
-        if (long_press_active) { cmdstate_set.rotate_wz = 0.0f; long_press_active = 0; sine_mode = 0; }
+        if (long_press_active) { cmdstate_set.rotate_wz = 0.0f; long_press_active = 0; sine_mode = 0; pulse_mode = 0; }
         else                   { cmdstate_set.rotate_wz += CHASSIS_ROTATE_WZ_STEP; }
         break;
 
     case DIAL_EVENT_SHORT_DOWN:
-        if (long_press_active) { cmdstate_set.rotate_wz = 0.0f; long_press_active = 0; sine_mode = 0; }
+        if (long_press_active) { cmdstate_set.rotate_wz = 0.0f; long_press_active = 0; sine_mode = 0; pulse_mode = 0; }
         else                   { cmdstate_set.rotate_wz -= CHASSIS_ROTATE_WZ_STEP; }
         break;
 
-    case DIAL_EVENT_LONG_DOWN:
-        long_press_active = 1;
-        sine_mode         = 0;                       // 定速
-        cmdstate_set.rotate_wz = 6.28f;
+    case DIAL_EVENT_LONG_DOWN:                 // 下拨长按 -> 变速脉冲小陀螺
+        long_press_active      = 1;
+        sine_mode              = 0;
+        pulse_mode             = 1;
+        pulse_index            = 0;
+        pulse_hold_ms          = 0.0f;
+        pulse_vw               = dir * w_min;  // 从最小速度起步
+        cmdstate_set.rotate_wz = pulse_vw;
         break;
 
-    case DIAL_EVENT_LONG_UP:
+    case DIAL_EVENT_LONG_UP:                   // 上拨长按 -> 正弦往复小陀螺(保留)
         long_press_active = 1;
-        sine_mode         = 1;                       // 进正弦模式
-        rotate_phase      = 0.0f;                    // 每次长按从 0 起摆
+        sine_mode         = 1;
+        pulse_mode        = 0;
+        rotate_phase      = 0.0f;
         break;
 
     case DIAL_EVENT_RELEASE_DOWN:
@@ -355,22 +400,22 @@ static void HandleRotateMode(DialEvent_e ev)
         cmdstate_set.rotate_wz = 0.0f;
         long_press_active = 0;
         sine_mode         = 0;
+        pulse_mode        = 0;
         break;
 
     default:
         break;
     }
 
-    /* 每拍执行:只有处于正弦模式才持续推进相位 */
+    /* 每拍执行 */
     if (sine_mode)
     {
-        // const float A = 2.64f;        // 幅值 = 峰峰值的一半
-        // const float B = 3.64f;        // 偏置，B == A → 谷值刚好触 0
-        const float A     = 2.14f;       // 幅值 = 峰峰值的一半
-        const float B     = 4.14f;       // 偏置，B == A → 谷值刚好触 0
-        const float f     = 0.4f;        // 频率 Hz
-        const float phi   = -1.5707963f; // 初相 -π/2，t=0 时 y=0
-        const float dt    = 0.005f;      // 200Hz
+        /* ---- 正弦往复(原逻辑,不变) ---- */
+        const float A     = 2.14f;        // 幅值 = 峰峰值的一半
+        const float B     = 4.14f;        // 偏置,B == A -> 谷值刚好触 0
+        const float f     = 0.2f;         // 频率 Hz
+        const float phi   = -1.5707963f;  // 初相 -pi/2,t=0 时 y=0
+        const float dt    = 0.005f;       // 200Hz
         const float omega = 2.0f * 3.14159265f * f;
 
         rotate_phase += omega * dt;
@@ -379,9 +424,41 @@ static void HandleRotateMode(DialEvent_e ev)
 
         cmdstate_set.rotate_wz = A * sinf(rotate_phase + phi) + B;
     }
+    else if (pulse_mode)
+    {
+        /* ---- 变速小陀螺:按目标表+保持时间切换目标,用加速度限幅逼近 ---- */
+        const float dt = 0.001f;             
 
-    LIMIT_MIN_MAX(cmdstate_set.rotate_wz,
-                  -CHASSIS_ROTATE_WZ_MAX, CHASSIS_ROTATE_WZ_MAX);
+        pulse_hold_ms += dt * 1000.0f;
+        if (pulse_hold_ms >= pulse_hold_ms_table[pulse_index])
+        {
+            pulse_index   = (uint8_t)((pulse_index + 1) % pulse_len);
+            pulse_hold_ms = 0.0f;
+        }
+
+        float target_vw = dir * pulse_w_table[pulse_index];
+        float error     = target_vw - pulse_vw;
+
+        /* 速度绝对值增大 -> 加速斜率 accel_up; 绝对值减小 -> 减速斜率 accel_down
+           (等价于 chassis 里 GAME_GYRO_DIR 正负两套判断) */
+        float accel    = (fabsf(target_vw) > fabsf(pulse_vw)) ? accel_up : accel_down;
+        float max_step = accel * dt;
+
+        if (error > max_step)        pulse_vw += max_step;
+        else if (error < -max_step)  pulse_vw -= max_step;
+        else                         pulse_vw  = target_vw;
+
+        /* 限幅到 [w_min, w_max],保持与 dir 同号 */
+        if (fabsf(pulse_vw) < w_min) pulse_vw = dir * w_min;
+        if (fabsf(pulse_vw) > w_max) pulse_vw = dir * w_max;
+
+        cmdstate_set.rotate_wz = pulse_vw;
+    }
+
+    float wz_limit = (sine_mode || pulse_mode) ? CHASSIS_CHANGE_ROTATE_WZ_MAX
+                                               : CHASSIS_ROTATE_WZ_MAX;
+
+    LIMIT_MIN_MAX(cmdstate_set.rotate_wz, -wz_limit, wz_limit);
 }
 #endif // GIMBAL_BOARD
 
@@ -395,7 +472,7 @@ static void RemoteControlSet(void)
 {
 #ifdef GIMBAL_BOARD // 对双板的兼容,条件编译
     static uint8_t last_left_sw = 0xFF;
-
+    static uint8_t sine_active  = 0;
     /* 默认安全输出值,后续进行覆盖 */
     gimbal_cmd_send.gimbal_mode   = GIMBAL_GYRO_MODE;   // 默认 IMU,导航分支会覆盖成 FREE
     shoot_cmd_send.shoot_mode     = SHOOT_OFF;
@@ -404,6 +481,7 @@ static void RemoteControlSet(void)
     chassis_cmd_send.vy = 0.0f;
     chassis_cmd_send.wz = 0.0f;
 
+    sine_active = 0;
     /* 更改左侧拨杆位置后复位拨轮状态机 */
     uint8_t cur_left_sw = rc_data[TEMP].rc.switch_left;
     if (cur_left_sw != last_left_sw)
@@ -450,13 +528,13 @@ static void RemoteControlSet(void)
         {
             if (vision_recv->mode == 0)
             {
-                HandleShoot(dial_event);
                 HandleGimbalYaw(Gimbal_Cruise_360);
                 HandleGimbalBPitch(dial_event, Gimbal_Remote, 0, 0);  // 强制抬头
-                HandleGimbalSPitchSine();
+                sine_active = 1;
             }
             else if (vision_recv->mode != 0)
             {
+                HandleShoot(dial_event);
                 float vision_yaw  = vision_recv->yaw;
                 float current_yaw = gimbal_fetch_data.gimbal_imu_data.YawTotalAngle;
 
@@ -503,7 +581,7 @@ static void RemoteControlSet(void)
                 else {
                     HandleGimbalYaw(Gimbal_Cruise_360);
                     HandleGimbalBPitch(dial_event, Gimbal_Remote, 0,0);
-                    HandleGimbalSPitchSine();
+                    sine_active = 1;
                 }
             }
             else if (vision_recv->mode != 0)
@@ -531,6 +609,7 @@ static void RemoteControlSet(void)
         HandleGimbalSPitch(0);
         HandleChassis(CHASSIS_ZERO_FORCE);
     }
+    HandleGimbalSPitchSine(sine_active);
 #endif
 }
 

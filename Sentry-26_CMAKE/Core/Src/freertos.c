@@ -61,6 +61,8 @@
 #ifdef GIMBAL_BOARD
 extern DMMotorInstance   *yaw_motor, *big_pitch_motor, *small_pitch_motor;
 extern DJIMotorInstance *friction_l, *friction_r, *loader;
+extern SMC loader_pos_smc;
+extern SMC loader_vel_smc;
 #endif
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -278,6 +280,15 @@ void StartVOFATask(void *argument)
     //       loader->motor_controller.speed_PID.Measure);
     //     HAL_UART_Transmit_DMA(&huart5, (uint8_t*)buff, len);
     // }
+    if (HAL_UART_GetState(&huart5) == HAL_UART_STATE_READY)
+    {
+        static char buff[150];
+        int len = sprintf(buff, "%f,%f,%f,%f\r\n",loader_pos_smc.error.target_current,
+          loader_pos_smc.error.position_current,
+          loader_vel_smc.error.target_current,
+          loader_vel_smc.error.velocity_current);
+        HAL_UART_Transmit_DMA(&huart5, (uint8_t*)buff, len);
+    }
     #endif
     osDelay(1);
   }

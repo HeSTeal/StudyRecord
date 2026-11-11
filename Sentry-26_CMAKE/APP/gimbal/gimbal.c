@@ -27,12 +27,12 @@ static Gimbal_Ctrl_Cmd_s    gimbal_cmd_recv;
  *   ���������� : �Ƕ� = measure.position(��3.14) / �ٶ� = measure.velocity(Լ 1.5��rad/s)
  */
 static PID_Init_Config_s yaw_angle_cfg_imu = {
-    .Kp = 0.3, .Ki = 0, .Kd = 0.003,
+    .Kp = 1.1, .Ki = 0, .Kd = 0.006,
     .MaxOut = 50, .IntegralLimit = 10,
     .Improve = (PID_Improvement_e)(PID_Integral_Limit | PID_Derivative_On_Measurement),
 };
 static PID_Init_Config_s yaw_speed_cfg_imu = {
-    .Kp = 2.0, .Ki = 0.3, .Kd = 0,
+    .Kp = 1.0, .Ki = 0.1, .Kd = 0,
     .MaxOut = 10, .IntegralLimit = 10,
     .Improve = (PID_Improvement_e)(PID_Integral_Limit | PID_Derivative_On_Measurement | PID_OutputFilter),
 };
@@ -89,12 +89,12 @@ void GimbalInit()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp = 0.3, .Ki = 0, .Kd = 0.003,
+                .Kp = 1.1, .Ki = 0, .Kd = 0.006,
                 .MaxOut = 50, .IntegralLimit = 10,
                 .Improve = (PID_Improvement_e)(PID_Integral_Limit | PID_Derivative_On_Measurement),
             },
             .speed_PID = {
-                .Kp = 2.0, .Ki = 0.3, .Kd = 0,
+                .Kp = 1.0, .Ki = 0.1, .Kd = 0,
                 .MaxOut = 10, .IntegralLimit = 10,
                 .Improve = (PID_Improvement_e)(PID_Integral_Limit | PID_Derivative_On_Measurement | PID_OutputFilter),
             },
@@ -125,7 +125,7 @@ void GimbalInit()
                 .Improve = (PID_Improvement_e)(PID_Integral_Limit | PID_Derivative_On_Measurement),
             },
             .speed_PID = {
-                .Kp = 1, .Ki = 0, .Kd = 0,
+                .Kp = 1.1, .Ki = 0, .Kd = 0,
                 .MaxOut = 10, .IntegralLimit = 10,
                 .Improve = (PID_Improvement_e)(PID_Integral_Limit | PID_Derivative_On_Measurement | PID_OutputFilter),
             },
@@ -151,12 +151,12 @@ void GimbalInit()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp = 0.5, .Ki = 0, .Kd = 0.0,
+                .Kp = 1.0, .Ki = 0, .Kd = 0.005,
                 .MaxOut = 100, .IntegralLimit = 10,
                 .Improve = (PID_Improvement_e)(PID_Integral_Limit | PID_Derivative_On_Measurement),
             },
             .speed_PID = {
-                .Kp = 0.8, .Ki = 0, .Kd = 0,
+                .Kp = 0.9, .Ki = 0, .Kd = 0,
                 .MaxOut = 100, .IntegralLimit = 10,
                 .Improve = (PID_Improvement_e)(PID_Integral_Limit | PID_Derivative_On_Measurement | PID_OutputFilter),
             },

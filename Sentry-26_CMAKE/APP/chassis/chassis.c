@@ -91,13 +91,13 @@ void ChassisInit()
         .send_data_len = sizeof(Chassis_Upload_Data_s),
     };
     chasiss_can_comm = CANCommInit(&comm_conf); // can comm初始化
-}
 #endif
+}
 //坐标系旋转
 static void RotateVec(float angle, float ix, float iy, float *ox, float *oy)
 {
-    float c = arm_cos_f32(angle-0.015*chassis_cmd_recv.wz);
-    float s = arm_sin_f32(angle-0.015*chassis_cmd_recv.wz);
+    float c = arm_cos_f32(angle-0.007*chassis_cmd_recv.wz);
+    float s = arm_sin_f32(angle-0.007*chassis_cmd_recv.wz);
     *ox = ix * c - iy * s;
     *oy = ix * s + iy * c;
 }
